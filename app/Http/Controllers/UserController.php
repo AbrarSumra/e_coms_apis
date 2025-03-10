@@ -224,8 +224,10 @@ class UserController extends Controller
     }
 
     /// Verify otp function
+    
     public function verifyOtp(Request $request)
     {
+        // Validate input fields
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'otp'   => 'required|numeric|digits:4'
@@ -238,6 +240,7 @@ class UserController extends Controller
             ], 200);
         }
     
+        // Find user by email
         $user = User::where('email', $request->email)->first();
     
         if (!$user) {
@@ -247,6 +250,7 @@ class UserController extends Controller
             ], 200);
         }
     
+        // Check if OTP exists
         if (!$user->otp || !$user->otp_expires_at) {
             return response()->json([
                 'status' => 400,
@@ -254,6 +258,7 @@ class UserController extends Controller
             ], 200);
         }
     
+        // Check if OTP is expired
         if (Carbon::parse($user->otp_expires_at)->isPast()) {
             return response()->json([
                 'status' => 400,
@@ -261,69 +266,75 @@ class UserController extends Controller
             ], 200);
         }
     
-        // Check if OTP is correct
-        if ($user->otp == $request->otp) {
-            DB::beginTransaction();
-            try {
-                if ($user->email_verified_at) {
-                    return response()->json([
-                        'status' => 400,
-                        'error' => 'Email already verified.',
-                    ], 200);
-                }
+        // Debugging logs
+        \Log::info("Stored OTP: " . $user->otp);
+        \Log::info("Received OTP: " . $request->otp);
+        \Log::info("OTP Expiry: " . $user->otp_expires_at);
     
-                // Verify email and clear OTP
-                $user->update([
-                    'email_verified_at' => now(),
-                ]);
-
-                $counter = TokenCounter::firstOrCreate([], ['last_number' => 0]);
-                $newNumber = $counter->last_number + 1;
-                $counter->update(['last_number' => $newNumber]);
-            
-                // Generate a new token
-                $token = $newNumber . '|' . bin2hex(random_bytes(32));                
-                
-                // Generate a new token
-                $token = $newNumber . '|' . bin2hex(random_bytes(32));
-
-                // $encrypted = encrypt($token);
-            
-                // Store token in the users table
-                $user->update([
-                    'token' => $token,
-                    'fcm_token' => $request->fcm_token ?? $user->fcm_token
-                ]);
-    
-                DB::commit();
-
-                // Exclude 'token' from user data
-                $userData = $user->toArray();
-                unset($userData['token']);
-    
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'OTP verified successfully!',
-                    "data" => [
-                    "token" => $token,
-                    "user" => $userData
-            ]
-                ], 200);
-    
-            } catch (\Exception $e) {
-                DB::rollBack();
-                return response()->json([
-                    'status' => 500,
-                    'error' => 'Something went wrong. Please try again.',
-                ], 500);
-            }
+        // Check if OTP matches
+        if ((string) $user->otp !== (string) $request->otp) {
+            return response()->json([
+                'status' => 400,
+                'error' => 'Invalid OTP.',
+            ], 200);
         }
     
-        return response()->json([
-            'status' => 400,
-            'error' => 'Invalid OTP.',
-        ], 200);
+        DB::beginTransaction();
+        try {
+            // Check if email is already verified
+            if ($user->email_verified_at) {
+                return response()->json([
+                    'status' => 400,
+                    'error' => 'Email already verified.',
+                ], 200);
+            }
+    
+            // Verify email and clear OTP
+            $user->update([
+                'email_verified_at' => now(),
+                'otp' => null, // Clear OTP after successful verification
+                'otp_expires_at' => null
+            ]);
+    
+            // Generate a unique token
+            $counter = TokenCounter::firstOrCreate([], ['last_number' => 0]);
+            $newNumber = $counter->last_number + 1;
+            $counter->update(['last_number' => $newNumber]);
+    
+            $token = $newNumber . '|' . bin2hex(random_bytes(32));
+    
+            // Store token in user table
+            $user->update([
+                'token' => $token,
+                'fcm_token' => $request->fcm_token ?? $user->fcm_token
+            ]);
+    
+            DB::commit();
+    
+            // Exclude 'token' from user data for security
+            $userData = $user->toArray();
+            unset($userData['token']);
+    
+            return response()->json([
+                'status' => 200,
+                'message' => 'OTP verified successfully!',
+                "data" => [
+                    "token" => $token,
+                    "user" => $userData
+                ]
+            ], 200);
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error("OTP Verification Error: " . $e->getMessage());
+    
+            return response()->json([
+                'status' => 500,
+                'error' => 'Something went wrong. Please try again.',
+            ], 500);
+        }
     }
+    
     
     /// Send otp to email function
     private function sendOtp($email)
