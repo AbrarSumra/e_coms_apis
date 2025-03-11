@@ -44,10 +44,7 @@ class CategoryController extends Controller
         ]);
     
         if ($validator->fails()) {
-            return response()->json([
-                "status" => 400, 
-                "error" => "The category name has already been taken."
-            ], 200);
+            return response()->json(["status" => 400, "error" => $validator->errors()->first()], 200);
         }
     
         // Check if an image is provided

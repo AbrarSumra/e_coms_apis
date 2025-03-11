@@ -3,12 +3,10 @@
 use App\Http\Controllers\CartItemsController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductsController;
-use App\Http\Controllers\StudentsController;
 use App\Http\Controllers\WishlistController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
-use App\Http\Middleware\AuthApiMiddleware;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\SubCategoryController;
 use App\Http\Controllers\MiscCategoryController;

@@ -42,10 +42,7 @@ class SubCategoryController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                "status" => 400, 
-                "error" => "The sub-category name has already been taken."
-            ], 200);
+            return response()->json(["status" => 400, "error" => $validator->errors()->first()], 200);
         }
 
         // Store Image
@@ -94,7 +91,7 @@ class SubCategoryController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(["status" => 400, "errors" => $validator->errors()], 200);
+            return response()->json(["status" => 400, "error" => $validator->errors()->first()], 200);
         }
 
         $subCategory = SubCategory::find($id);
@@ -138,7 +135,7 @@ class SubCategoryController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(["status" => 400, "errors" => $validator->errors()], 200);
+            return response()->json(["status" => 400, "error" => $validator->errors()->first()], 200);
         }
 
         $subCategory = SubCategory::find($request->sub_category_id);

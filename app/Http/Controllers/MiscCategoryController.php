@@ -41,10 +41,7 @@ class MiscCategoryController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                "status" => 400, 
-                "error" => "The misc-category name has already been taken."
-            ], 200);
+            return response()->json(["status" => 400, "error" => $validator->errors()->first()], 200);
         }
 
         $miscCategory = MiscCategory::create([
